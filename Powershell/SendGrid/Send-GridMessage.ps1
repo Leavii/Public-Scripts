@@ -234,13 +234,34 @@ function Send-GridMessage {
 
             If ($Indefinite -or $EndDate) {
 
-                Write-Host "Starting loop..."
+                Write-Host "Starting...`n"
                 
                 While ($EndDate -gt $Today) {
 
-                    Start-Sleep -Seconds $Interval
-
+                    $IntervalTimer = 0
+                    $LimitTimer = 0
                     $Today = Get-Date
+
+                    If (!($Today.Date -eq $DateCheck.Date)) {
+
+                        Write-Host "Happy $($Today.DayOfWeek)!"
+
+                        $DateCheck = Get-Date
+                        $Sent = 0
+                        $SecondsInDay = [math]::Round(((((Get-Date).AddDays(1)).Date) - (Get-Date)).TotalSeconds)
+                        $Interval = $SecondsInDay / $Limit
+
+                    }
+                    
+                    While ($IntervalTimer -lt $Interval) {
+                     
+                        $IntervalTimer++
+                        $Remainder = $Interval - $IntervalTimer
+
+                        Write-Host "$($Remainder) seconds until next interval`r" -NoNewline
+                        Start-Sleep -Seconds 1
+
+                    }                    
 
                     If ($Indefinite) {
 
@@ -288,7 +309,7 @@ function Send-GridMessage {
 
                         If ($Sent -lt $Limit) {
 
-                                Try {
+                            Try {
                                 
                                 Invoke-RestMethod -Uri "https://api.sendgrid.com/v3/mail/send" -Method Post -Headers $Headers -Body $Json
 
@@ -312,7 +333,7 @@ function Send-GridMessage {
 
                     } Else {
 
-                        $Return = "MinimumInterval exceeded: $($Interval)"
+                        $Return = "MinimumInterval exceeded: $($MinimumInterval) > $($Interval)"
 
                     }
 
@@ -320,18 +341,15 @@ function Send-GridMessage {
 
                         $WaitPeriod = [math]::Round(((((Get-Date).AddDays(1)).Date) - (Get-Date)).TotalSeconds + 60)
 
-                        Write-Host "Waiting $($WaitPeriod) Seconds until tomorrow"
+                        While ($LimitTimer -lt $WaitPeriod) {
+                            
+                            $LimitTimer++
+                            $Remainder = $WaitPeriod - $LimitTimer
 
-                        Start-Sleep -Seconds $WaitPeriod
+                            Write-Host "$($Return): waiting $($Remainder) seconds until tomorrow`r" -NoNewline
+                            Start-Sleep -Seconds 1
 
-                    }
-
-                    If (!($Today.Date -eq $DateCheck.Date)) {
-
-                        $DateCheck = Get-Date
-                        $Sent = 0
-                        $SecondsInDay = [math]::Round(((((Get-Date).AddDays(1)).Date) - (Get-Date)).TotalSeconds)
-                        $Interval = $SecondsInDay / $Limit
+                        }
 
                     }
 
